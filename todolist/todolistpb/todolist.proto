@@ -1,0 +1,6 @@
+syntax = "proto3";
+
+package todolist;
+option go_package="./todolistpb";
+
+service TodoListService{}
