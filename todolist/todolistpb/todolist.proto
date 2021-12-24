@@ -8,50 +8,9 @@ message TodoList {
     string description = 2;
     string thumbnail = 3;
     int32 priority = 4;
+    string date = 5;
 }
 
-message TodoListRequest {
-    TodoList todoList = 1;
-}
-
-message TodoListResponse {
-    string result = 1;
-}
-
-message TodoListManyTimesRequests {
-    TodoList todolist = 1;
-}
-
-message TodoListManyTimesResponses {
-    string result = 1;
-}
-
-message LongTodoListRequest {
-    TodoList todoList = 1;
-}
-
-message LongTodoListResponse {
-    string result = 1;
-}
-
-message EveryOneTodoListRequest {
-    TodoList todoList = 1;
-}
-
-message EveryOneTodoListResponse {
-    string result = 1;
-}
-
-service TodoListService{
-    //Unary RPC
-    rpc TodoList(TodoListRequest) returns(TodoListResponse) {};
-
-    //Server Stream
-    rpc TodoListManyTimes(TodoListManyTimesRequests) returns(stream TodoListManyTimesResponses){}
-
-    //Client Stream
-    rpc LongTodoList(stream LongTodoListRequest) returns(LongTodoListResponse){}
-
-    //BiDirectional Stream
-    rpc TodoListEveryone(stream EveryOneTodoListRequest) returns(stream EveryOneTodoListResponse){}
+service TodoListService {
+    
 }

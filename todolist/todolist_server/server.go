@@ -3,13 +3,15 @@ package main
 import (
 	"context"
 	"fmt"
-	"io"
 	"log"
 	"net"
-	"strconv"
+	"os"
+	"os/signal"
 	"time"
 
 	"github.com/meivaldi/TodoList-gRPC/todolist/todolistpb"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"google.golang.org/grpc"
 )
 
@@ -17,78 +19,53 @@ type server struct {
 	todolistpb.UnimplementedTodoListServiceServer
 }
 
-func (s *server) TodoList(ctx context.Context, req *todolistpb.TodoListRequest) (*todolistpb.TodoListResponse, error) {
-	fmt.Printf("TodoList function was invoked with %v\n", req)
-	title := req.GetTodoList().GetTitle()
-	description := req.GetTodoList().GetDescription()
-	thumbnail := req.GetTodoList().GetThumbnail()
-	priority := req.GetTodoList().GetPriority()
-
-	result := title + ", " + description + ", " + thumbnail + ", " + strconv.Itoa(int(priority))
-	res := &todolistpb.TodoListResponse{
-		Result: result,
-	}
-
-	return res, nil
+type todoListItem struct {
+	Id          int    `bson: "id,omitempty"`
+	Title       string `bson: "title"`
+	Description string `bson: "desc"`
+	Thumbnail   string `bson: "thumbnail"`
+	Priority    int    `bson: "priority"`
+	Date        string `bson: "date"`
 }
 
-func (s *server) TodoListManyTimes(req *todolistpb.TodoListManyTimesRequests, stream todolistpb.TodoListService_TodoListManyTimesServer) error {
-	fmt.Printf("TodoList stream server function was invoked with %v\n", req)
-
-	title := req.GetTodolist().GetTitle()
-	description := req.GetTodolist().GetDescription()
-	thumbnail := req.GetTodolist().GetThumbnail()
-	priority := req.GetTodolist().GetPriority()
-
-	for i := 1; i <= 10; i++ {
-		result := strconv.Itoa(i) + ". " + title + ", " + description + ", " + thumbnail + ", " + strconv.Itoa(int(priority))
-		res := &todolistpb.TodoListManyTimesResponses{
-			Result: result,
-		}
-		stream.Send(res)
-		time.Sleep(1000 * time.Millisecond)
-	}
-
-	return nil
-}
-
-func (s *server) LongTodoList(stream todolistpb.TodoListService_LongTodoListServer) error {
-	fmt.Printf("TodoList stream client function was invoked with a streaming request\n")
-	result := ""
-
-	for {
-		req, err := stream.Recv()
-		if err == io.EOF {
-			return stream.SendAndClose(&todolistpb.LongTodoListResponse{
-				Result: result,
-			})
-		}
-
-		if err != nil {
-			log.Fatalf("Failed to send streaming request: %v", err)
-		}
-
-		title := req.GetTodoList().GetTitle()
-		result += title + "; "
-	}
-}
-
-func (s *server) TodoListEveryone(stream todolistpb.TodoListService_TodoListEveryoneServer) error {
-	fmt.Printf("TodoList stream server function was invoked with a streaming request\n")
-
-	return nil
-}
+var collection *mongo.Collection
 
 func main() {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	fmt.Println("TodoList Service Started...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	fmt.Println("Connecting MongoDB")
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://localhost:27017"))
+
+	collection = client.Database("backend").Collection("todolist")
+
 	lis, err := net.Listen("tcp", "0.0.0.0:50051")
 	if err != nil {
-		log.Fatalf("Failed to listen: %v", err)
+		log.Fatalf("Failed to listen: %v\n", err)
 	}
 
-	s := grpc.NewServer()
+	opts := []grpc.ServerOption{}
+	s := grpc.NewServer(opts...)
 	todolistpb.RegisterTodoListServiceServer(s, &server{})
 
-	if err := s.Serve(lis); err != nil {
-		log.Fatalf("Failed to serve: %v", err)
-	}
+	go func() {
+		fmt.Println("Starting server...")
+		if err := s.Serve(lis); err != nil {
+			log.Fatalf("Failed to serve: %v\n", err)
+		}
+	}()
+
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, os.Interrupt)
+
+	<-ch
+	fmt.Println("Stopping server...")
+	s.Stop()
+	fmt.Println("Stopping listener...")
+	lis.Close()
+	fmt.Println("Closing MongoDB Connection")
+	client.Disconnect(context.TODO())
+	fmt.Println("Finish...")
 }
