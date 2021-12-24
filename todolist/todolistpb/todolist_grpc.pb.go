@@ -3,7 +3,10 @@
 package todolistpb
 
 import (
+	context "context"
 	grpc "google.golang.org/grpc"
+	codes "google.golang.org/grpc/codes"
+	status "google.golang.org/grpc/status"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -15,6 +18,14 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type TodoListServiceClient interface {
+	//Unary RPC
+	TodoList(ctx context.Context, in *TodoListRequest, opts ...grpc.CallOption) (*TodoListResponse, error)
+	//Server Stream
+	TodoListManyTimes(ctx context.Context, in *TodoListManyTimesRequests, opts ...grpc.CallOption) (TodoListService_TodoListManyTimesClient, error)
+	//Client Stream
+	LongTodoList(ctx context.Context, opts ...grpc.CallOption) (TodoListService_LongTodoListClient, error)
+	//BiDirectional Stream
+	TodoListEveryone(ctx context.Context, opts ...grpc.CallOption) (TodoListService_TodoListEveryoneClient, error)
 }
 
 type todoListServiceClient struct {
@@ -25,10 +36,124 @@ func NewTodoListServiceClient(cc grpc.ClientConnInterface) TodoListServiceClient
 	return &todoListServiceClient{cc}
 }
 
+func (c *todoListServiceClient) TodoList(ctx context.Context, in *TodoListRequest, opts ...grpc.CallOption) (*TodoListResponse, error) {
+	out := new(TodoListResponse)
+	err := c.cc.Invoke(ctx, "/todolist.TodoListService/TodoList", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *todoListServiceClient) TodoListManyTimes(ctx context.Context, in *TodoListManyTimesRequests, opts ...grpc.CallOption) (TodoListService_TodoListManyTimesClient, error) {
+	stream, err := c.cc.NewStream(ctx, &TodoListService_ServiceDesc.Streams[0], "/todolist.TodoListService/TodoListManyTimes", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &todoListServiceTodoListManyTimesClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type TodoListService_TodoListManyTimesClient interface {
+	Recv() (*TodoListManyTimesResponses, error)
+	grpc.ClientStream
+}
+
+type todoListServiceTodoListManyTimesClient struct {
+	grpc.ClientStream
+}
+
+func (x *todoListServiceTodoListManyTimesClient) Recv() (*TodoListManyTimesResponses, error) {
+	m := new(TodoListManyTimesResponses)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *todoListServiceClient) LongTodoList(ctx context.Context, opts ...grpc.CallOption) (TodoListService_LongTodoListClient, error) {
+	stream, err := c.cc.NewStream(ctx, &TodoListService_ServiceDesc.Streams[1], "/todolist.TodoListService/LongTodoList", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &todoListServiceLongTodoListClient{stream}
+	return x, nil
+}
+
+type TodoListService_LongTodoListClient interface {
+	Send(*LongTodoListRequest) error
+	CloseAndRecv() (*LongTodoListResponse, error)
+	grpc.ClientStream
+}
+
+type todoListServiceLongTodoListClient struct {
+	grpc.ClientStream
+}
+
+func (x *todoListServiceLongTodoListClient) Send(m *LongTodoListRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *todoListServiceLongTodoListClient) CloseAndRecv() (*LongTodoListResponse, error) {
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	m := new(LongTodoListResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *todoListServiceClient) TodoListEveryone(ctx context.Context, opts ...grpc.CallOption) (TodoListService_TodoListEveryoneClient, error) {
+	stream, err := c.cc.NewStream(ctx, &TodoListService_ServiceDesc.Streams[2], "/todolist.TodoListService/TodoListEveryone", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &todoListServiceTodoListEveryoneClient{stream}
+	return x, nil
+}
+
+type TodoListService_TodoListEveryoneClient interface {
+	Send(*EveryOneTodoListRequest) error
+	Recv() (*EveryOneTodoListResponse, error)
+	grpc.ClientStream
+}
+
+type todoListServiceTodoListEveryoneClient struct {
+	grpc.ClientStream
+}
+
+func (x *todoListServiceTodoListEveryoneClient) Send(m *EveryOneTodoListRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *todoListServiceTodoListEveryoneClient) Recv() (*EveryOneTodoListResponse, error) {
+	m := new(EveryOneTodoListResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // TodoListServiceServer is the server API for TodoListService service.
 // All implementations must embed UnimplementedTodoListServiceServer
 // for forward compatibility
 type TodoListServiceServer interface {
+	//Unary RPC
+	TodoList(context.Context, *TodoListRequest) (*TodoListResponse, error)
+	//Server Stream
+	TodoListManyTimes(*TodoListManyTimesRequests, TodoListService_TodoListManyTimesServer) error
+	//Client Stream
+	LongTodoList(TodoListService_LongTodoListServer) error
+	//BiDirectional Stream
+	TodoListEveryone(TodoListService_TodoListEveryoneServer) error
 	mustEmbedUnimplementedTodoListServiceServer()
 }
 
@@ -36,6 +161,18 @@ type TodoListServiceServer interface {
 type UnimplementedTodoListServiceServer struct {
 }
 
+func (UnimplementedTodoListServiceServer) TodoList(context.Context, *TodoListRequest) (*TodoListResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method TodoList not implemented")
+}
+func (UnimplementedTodoListServiceServer) TodoListManyTimes(*TodoListManyTimesRequests, TodoListService_TodoListManyTimesServer) error {
+	return status.Errorf(codes.Unimplemented, "method TodoListManyTimes not implemented")
+}
+func (UnimplementedTodoListServiceServer) LongTodoList(TodoListService_LongTodoListServer) error {
+	return status.Errorf(codes.Unimplemented, "method LongTodoList not implemented")
+}
+func (UnimplementedTodoListServiceServer) TodoListEveryone(TodoListService_TodoListEveryoneServer) error {
+	return status.Errorf(codes.Unimplemented, "method TodoListEveryone not implemented")
+}
 func (UnimplementedTodoListServiceServer) mustEmbedUnimplementedTodoListServiceServer() {}
 
 // UnsafeTodoListServiceServer may be embedded to opt out of forward compatibility for this service.
@@ -49,13 +186,126 @@ func RegisterTodoListServiceServer(s grpc.ServiceRegistrar, srv TodoListServiceS
 	s.RegisterService(&TodoListService_ServiceDesc, srv)
 }
 
+func _TodoListService_TodoList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TodoListRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TodoListServiceServer).TodoList(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/todolist.TodoListService/TodoList",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TodoListServiceServer).TodoList(ctx, req.(*TodoListRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _TodoListService_TodoListManyTimes_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(TodoListManyTimesRequests)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(TodoListServiceServer).TodoListManyTimes(m, &todoListServiceTodoListManyTimesServer{stream})
+}
+
+type TodoListService_TodoListManyTimesServer interface {
+	Send(*TodoListManyTimesResponses) error
+	grpc.ServerStream
+}
+
+type todoListServiceTodoListManyTimesServer struct {
+	grpc.ServerStream
+}
+
+func (x *todoListServiceTodoListManyTimesServer) Send(m *TodoListManyTimesResponses) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func _TodoListService_LongTodoList_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(TodoListServiceServer).LongTodoList(&todoListServiceLongTodoListServer{stream})
+}
+
+type TodoListService_LongTodoListServer interface {
+	SendAndClose(*LongTodoListResponse) error
+	Recv() (*LongTodoListRequest, error)
+	grpc.ServerStream
+}
+
+type todoListServiceLongTodoListServer struct {
+	grpc.ServerStream
+}
+
+func (x *todoListServiceLongTodoListServer) SendAndClose(m *LongTodoListResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *todoListServiceLongTodoListServer) Recv() (*LongTodoListRequest, error) {
+	m := new(LongTodoListRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func _TodoListService_TodoListEveryone_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(TodoListServiceServer).TodoListEveryone(&todoListServiceTodoListEveryoneServer{stream})
+}
+
+type TodoListService_TodoListEveryoneServer interface {
+	Send(*EveryOneTodoListResponse) error
+	Recv() (*EveryOneTodoListRequest, error)
+	grpc.ServerStream
+}
+
+type todoListServiceTodoListEveryoneServer struct {
+	grpc.ServerStream
+}
+
+func (x *todoListServiceTodoListEveryoneServer) Send(m *EveryOneTodoListResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *todoListServiceTodoListEveryoneServer) Recv() (*EveryOneTodoListRequest, error) {
+	m := new(EveryOneTodoListRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // TodoListService_ServiceDesc is the grpc.ServiceDesc for TodoListService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var TodoListService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "todolist.TodoListService",
 	HandlerType: (*TodoListServiceServer)(nil),
-	Methods:     []grpc.MethodDesc{},
-	Streams:     []grpc.StreamDesc{},
-	Metadata:    "todolist/todolistpb/todolist.proto",
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "TodoList",
+			Handler:    _TodoListService_TodoList_Handler,
+		},
+	},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "TodoListManyTimes",
+			Handler:       _TodoListService_TodoListManyTimes_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "LongTodoList",
+			Handler:       _TodoListService_LongTodoList_Handler,
+			ClientStreams: true,
+		},
+		{
+			StreamName:    "TodoListEveryone",
+			Handler:       _TodoListService_TodoListEveryone_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
+	},
+	Metadata: "todolist/todolistpb/todolist.proto",
 }
