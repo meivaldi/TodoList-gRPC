@@ -10,9 +10,12 @@ import (
 	"time"
 
 	"github.com/meivaldi/TodoList-gRPC/todolist/todolistpb"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type server struct {
@@ -30,7 +33,47 @@ type todoListItem struct {
 
 var collection *mongo.Collection
 
+func (*server) CreateTodoList(ctx context.Context, req *todolistpb.CreateTodoListRequest) (*todolistpb.CreateTodoListResponse, error) {
+	todoList := req.GetTodoList()
+
+	data := todoListItem{
+		Title:       todoList.GetTitle(),
+		Description: todoList.GetDescription(),
+		Thumbnail:   todoList.GetThumbnail(),
+		Priority:    int(todoList.GetPriority()),
+		Date:        todoList.GetDate(),
+	}
+
+	res, err := collection.InsertOne(context.Background(), data)
+	if err != nil {
+		return nil, status.Errorf(
+			codes.Internal,
+			fmt.Sprintf("Internal Server Error: %v\n", err),
+		)
+	}
+
+	oid, ok := res.InsertedID.(primitive.ObjectID)
+	if !ok {
+		return nil, status.Errorf(
+			codes.Internal,
+			fmt.Sprintln("Couldn't convert to OID"),
+		)
+	}
+
+	return &todolistpb.CreateTodoListResponse{
+		TodoList: &todolistpb.TodoList{
+			Id:          oid.Hex(),
+			Title:       todoList.GetTitle(),
+			Description: todoList.GetDescription(),
+			Thumbnail:   todoList.GetThumbnail(),
+			Priority:    todoList.GetPriority(),
+			Date:        todoList.GetDate(),
+		},
+	}, nil
+}
+
 func main() {
+	//set flags so if we get an error, we can see which line cause an error
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	fmt.Println("TodoList Service Started...")
 
@@ -38,6 +81,9 @@ func main() {
 	defer cancel()
 	fmt.Println("Connecting MongoDB")
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://localhost:27017"))
+	if err != nil {
+		log.Fatalf("Couldn't connect to mongodb: %v\n", err)
+	}
 
 	collection = client.Database("backend").Collection("todolist")
 
@@ -57,6 +103,7 @@ func main() {
 		}
 	}()
 
+	//create custom interrupt, so code below get executed after finished/stopped
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, os.Interrupt)
 
