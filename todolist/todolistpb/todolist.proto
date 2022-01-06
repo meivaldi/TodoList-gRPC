@@ -10,6 +10,7 @@ message TodoList {
     string thumbnail = 4;
     int32 priority = 5;
     string date = 6;
+    int32 status = 7;
 }
 
 message CreateTodoListRequest {
